@@ -105,7 +105,9 @@ const server = http.createServer((req, res) => {
 });
 
 const port = process.env.BR0NSON_PORT || 3000;
-server.listen(port, err => {
+const host = '0.0.0.0';
+server.listen(port, host, err => {
   if (err) throw err;
-  console.log(`Listening on localhost:${port}`);
+  console.log(`Listening on ${host}:${port}`);
 });
+
