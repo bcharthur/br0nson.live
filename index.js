@@ -13,20 +13,26 @@ let flipped;
   const framesPath = 'frames';
   const files = await fs.readdir(framesPath);
 
+  // Sort files numerically
+  files.sort((a, b) => {
+    return parseInt(a, 10) - parseInt(b, 10);
+  });
+
+  console.log('Loading frames...');
   original = await Promise.all(files.map(async (file) => {
     const frame = await fs.readFile(path.join(framesPath, file));
     return frame.toString();
   }));
   flipped = original.map(f => {
     return f
-      .toString()
       .split('')
       .reverse()
-      .join('')
-  })
+      .join('');
+  });
+
+  console.log('Frames loaded successfully');
 })().catch((err) => {
-  console.log('Error loading frames');
-  console.log(err);
+  console.error('Error loading frames', err);
 });
 
 const colorsOptions = [
@@ -41,30 +47,32 @@ const colorsOptions = [
 const numColors = colorsOptions.length;
 const selectColor = previousColor => {
   let color;
-
   do {
     color = Math.floor(Math.random() * numColors);
   } while (color === previousColor);
-
   return color;
 };
 
 const streamer = (stream, opts) => {
   let index = 0;
   let lastColor;
-  let frame = null;
   const frames = opts.flip ? flipped : original;
 
-  return setInterval(() => {
-    // clear the screen
-    stream.push('\033[2J\033[3J\033[H');
+  // Add a delay before starting the stream
+  setTimeout(() => {
+    console.log('Starting frame stream...');
+    setInterval(() => {
+      // clear the screen
+      stream.push('\033[2J\033[3J\033[H');
 
-    const newColor = lastColor = selectColor(lastColor);
+      const newColor = lastColor = selectColor(lastColor);
 
-    stream.push(colors[colorsOptions[newColor]](frames[index]));
+      console.log(`Displaying frame: ${index}`);
+      stream.push(colors[colorsOptions[newColor]](frames[index]));
 
-    index = (index + 1) % frames.length;
-  }, 70);
+      index = (index + 1) % frames.length;
+    }, 70);
+  }, 1000); // Delay of 1 second before starting the stream
 };
 
 const validateQuery = ({ flip }) => ({
@@ -74,7 +82,7 @@ const validateQuery = ({ flip }) => ({
 const server = http.createServer((req, res) => {
   if (req.url === '/healthcheck') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    return res.end(JSON.stringify({status: 'ok'}));
+    return res.end(JSON.stringify({ status: 'ok' }));
   }
 
   if (
@@ -102,3 +110,5 @@ server.listen(port, err => {
   if (err) throw err;
   console.log(`Listening on localhost:${port}`);
 });
+
+module.exports = server;
