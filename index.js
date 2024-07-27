@@ -1,50 +1,40 @@
 const fs = require('mz/fs');
 const path = require('path');
-const http = require('http');
-const url = require('url');
 const { Readable } = require('stream');
 const colors = require('colors/safe');
 
 // Setup frames in memory
-let original;
-let flipped;
+let original = [];
+let flipped = [];
 
+// Load frames asynchronously
 (async () => {
-  const framesPath = 'frames';
-  const files = await fs.readdir(framesPath);
+  try {
+    const framesPath = 'frames';
+    const files = await fs.readdir(framesPath);
 
-  // Sort files numerically
-  files.sort((a, b) => {
-    return parseInt(a, 10) - parseInt(b, 10);
-  });
+    // Sort files numerically
+    files.sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
 
-  console.log('Loading frames...');
-  original = await Promise.all(files.map(async (file) => {
-    const frame = await fs.readFile(path.join(framesPath, file));
-    return frame.toString();
-  }));
-  flipped = original.map(f => {
-    return f
-      .split('')
-      .reverse()
-      .join('');
-  });
+    console.log('Loading frames...');
+    original = await Promise.all(files.map(async (file) => {
+      const frame = await fs.readFile(path.join(framesPath, file));
+      return frame.toString();
+    }));
 
-  console.log('Frames loaded successfully');
-})().catch((err) => {
-  console.error('Error loading frames', err);
-});
+    flipped = original.map(f => f.split('').reverse().join(''));
+    console.log('Frames loaded successfully');
+  } catch (err) {
+    console.error('Error loading frames', err);
+  }
+})();
 
 const colorsOptions = [
-  'red',
-  'yellow',
-  'green',
-  'blue',
-  'magenta',
-  'cyan',
-  'white'
+  'red', 'yellow', 'green', 'blue', 'magenta', 'cyan', 'white'
 ];
+
 const numColors = colorsOptions.length;
+
 const selectColor = previousColor => {
   let color;
   do {
@@ -79,17 +69,13 @@ const validateQuery = ({ flip }) => ({
   flip: String(flip).toLowerCase() === 'true'
 });
 
-const server = http.createServer((req, res) => {
+module.exports = (req, res) => {
   if (req.url === '/healthcheck') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({ status: 'ok' }));
   }
 
-  if (
-    req.headers &&
-    req.headers['user-agent'] &&
-    !req.headers['user-agent'].includes('curl')
-  ) {
+  if (req.headers && req.headers['user-agent'] && !req.headers['user-agent'].includes('curl')) {
     res.writeHead(302, { Location: 'https://github.com/bcharthur/br0nson.live' });
     return res.end();
   }
@@ -103,12 +89,4 @@ const server = http.createServer((req, res) => {
     stream.destroy();
     clearInterval(interval);
   });
-});
-
-const port = process.env.BR0NSON_PORT || 3000;
-server.listen(port, err => {
-  if (err) throw err;
-  console.log(`Listening on localhost:${port}`);
-});
-
-module.exports = server;
+};
